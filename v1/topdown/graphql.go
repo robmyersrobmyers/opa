@@ -453,26 +453,89 @@ func builtinGraphQLIsValid(_ BuiltinContext, operands []*ast.Term, iter func(*as
 	return iter(ast.InternedBooleanTerm(true))
 }
 
-func builtinGraphQLSchemaIsValid(_ BuiltinContext, operands []*ast.Term, iter func(*ast.Term) error) error {
-	var schemaDoc *gqlast.SchemaDocument
+func builtinGraphQLSchemaIsValid(bctx BuiltinContext, operands []*ast.Term, iter func(*ast.Term) error) error {
 	var err error
 
-	switch x := operands[0].Value.(type) {
-	case ast.String:
-		schemaDoc, err = parseSchema(string(x))
-	case ast.Object:
-		schemaDoc, err = objectToSchemaDocument(x)
-	default:
-		// Error if wrong type.
-		return iter(ast.InternedBooleanTerm(false))
-	}
-	if err != nil {
-		return iter(ast.InternedBooleanTerm(false))
+	// Schemas are only cached if they are valid
+	schemaCacheKey, schema := cacheGetSchema(bctx, operands)
+	if schema == nil {
+		var schemaDoc *gqlast.SchemaDocument
+		var validatedSchema *gqlast.Schema
+
+		switch x := operands[0].Value.(type) {
+		case ast.String:
+			schemaDoc, err = parseSchema(string(x))
+		case ast.Object:
+			schemaDoc, err = objectToSchemaDocument(x)
+		default:
+			// Error if wrong type.
+			return iter(ast.InternedBooleanTerm(false))
+		}
+		if err != nil {
+			return iter(ast.InternedBooleanTerm(false))
+		}
+		// Validate the schema, this determines the result
+		// and whether there is a schema to cache
+		validatedSchema, err = convertSchema(schemaDoc)
+		if bctx.InterQueryBuiltinValueCache != nil && err == nil {
+			cacheInsertSchema(bctx, schemaCacheKey, validatedSchema)
+		}
 	}
 
-	// Validate the schema, this determines the result
-	_, err = convertSchema(schemaDoc)
 	return iter(ast.InternedBooleanTerm(err == nil))
+}
+
+// Insert Schema into cache
+func cacheInsertSchema(bctx BuiltinContext, key string, schema *gqlast.Schema) int {
+	cacheKeyAST := ast.StringTerm(key).Value
+	numDroppedEntries := bctx.InterQueryBuiltinValueCache.Insert(cacheKeyAST, schema)
+	return numDroppedEntries
+}
+
+// Returns the cache key and a Schema if this key already exists in the cache
+func cacheGetSchema(bctx BuiltinContext, operands []*ast.Term) (string, *gqlast.Schema) {
+	var key string
+	var schema *gqlast.Schema
+
+	if k, keyOk := cacheKeyWithPrefix(bctx, operands, "gql_schema"); keyOk {
+		key = k
+		if val, ok := bctx.InterQueryBuiltinValueCache.Get(ast.StringTerm(key).Value); ok {
+			var isSchema bool
+			schema, isSchema = val.(*gqlast.Schema)
+			if !isSchema {
+				return key, nil
+			}
+		}
+	}
+	return key, schema
+}
+
+// Compute a constant size key for use with the cache
+func cacheKeyWithPrefix(bctx BuiltinContext, operands []*ast.Term, prefix string) (string, bool) {
+	var cacheKey ast.String
+	var ok bool = false
+
+	if bctx.InterQueryBuiltinValueCache != nil {
+		switch operands[0].Value.(type) {
+		case ast.String:
+			err := builtinCryptoSha256(bctx, operands, func(term *ast.Term) error {
+				cacheKey = term.Value.(ast.String)
+				return nil
+			})
+			ok = (len(cacheKey) > 0) && (err == nil)
+		case ast.Object:
+			objTerm := ast.NewTerm(ast.String(operands[0].String()))
+			err := builtinCryptoSha256(bctx, []*ast.Term{objTerm}, func(term *ast.Term) error {
+				cacheKey = term.Value.(ast.String)
+				return nil
+			})
+			ok = (len(cacheKey) > 0) && (err == nil)
+		default:
+			ok = false
+		}
+	}
+
+	return prefix + "-" + string(cacheKey), ok
 }
 
 func init() {
