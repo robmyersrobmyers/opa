@@ -47,8 +47,8 @@ const employeeGQLQueryAST = `{"Operations":[{"Name":"","Operation":"query","Sele
 
 const employeeGQLSchemaAST = `{"Definitions":[{"BuiltIn":false,"Description":"","Fields":[{"Description":"","Name":"id","Type":{"NamedType":"String","NonNull":true}},{"Description":"","Name":"salary","Type":{"NamedType":"Int","NonNull":true}}],"Kind":"OBJECT","Name":"Employee"},{"BuiltIn":false,"Description":"","Fields":[{"Arguments":[{"Description":"","Name":"id","Type":{"NamedType":"String","NonNull":true}}],"Description":"","Name":"employeeByID","Type":{"NamedType":"Employee","NonNull":false}}],"Kind":"OBJECT","Name":"Query"}],"Schema":[{"Description":"","OperationTypes":[{"Operation":"query","Type":"Query"}]}]}`
 
-var queryObj = ast.MustParseTerm(employeeGQLQueryAST).Value.(ast.Object)
-var schemaObj = ast.MustParseTerm(employeeGQLSchemaAST).Value.(ast.Object)
+var employeeGQLQueryASTObj = ast.MustParseTerm(employeeGQLQueryAST).Value.(ast.Object)
+var employeeGQLSchemaASTObj = ast.MustParseTerm(employeeGQLSchemaAST).Value.(ast.Object)
 
 func TestGraphQLParseString(t *testing.T) {
 	t.Parallel()
@@ -160,8 +160,8 @@ func TestGraphQLParseObject(t *testing.T) {
 	// Create a default Term with the expected result for the happy path here
 	// so we can include it in the test case table
 	defaultExpectedResult := ast.ArrayTerm(
-		ast.NewTerm(queryObj),
-		ast.NewTerm(schemaObj),
+		ast.NewTerm(employeeGQLQueryASTObj),
+		ast.NewTerm(employeeGQLSchemaASTObj),
 	)
 
 	cases := []struct {
@@ -388,8 +388,8 @@ func TestGraphQLParseAndVerify(t *testing.T) {
 			query:  `{ employeeByID(id: "alice") { salary } }`,
 			result: ast.ArrayTerm(
 				ast.BooleanTerm(true),
-				ast.NewTerm(queryObj),
-				ast.NewTerm(schemaObj),
+				ast.NewTerm(employeeGQLQueryASTObj),
+				ast.NewTerm(employeeGQLSchemaASTObj),
 			),
 			wantErr: false,
 		},
@@ -428,7 +428,7 @@ func TestGraphQLParseAndVerify(t *testing.T) {
 			result: ast.ArrayTerm(
 				ast.BooleanTerm(true),
 				ast.MustParseTerm("{}"),
-				ast.NewTerm(schemaObj),
+				ast.NewTerm(employeeGQLSchemaASTObj),
 			),
 			wantErr: false,
 		},
@@ -623,7 +623,7 @@ func TestGraphQLParseQuery(t *testing.T) {
 		{
 			note:    "valid employee - query as string",
 			query:   ast.NewTerm(ast.String(`{ employeeByID(id: "alice") { salary } }`)),
-			result:  ast.NewTerm(queryObj),
+			result:  ast.NewTerm(employeeGQLQueryASTObj),
 			wantErr: false,
 		},
 		{
@@ -715,7 +715,7 @@ func TestGraphQLParseSchema(t *testing.T) {
 		{
 			note:    "valid schema as string",
 			schema:  ast.NewTerm(ast.String(employeeGQLSchema)),
-			result:  ast.NewTerm(schemaObj),
+			result:  ast.NewTerm(employeeGQLSchemaASTObj),
 			wantErr: false,
 		},
 		{
@@ -730,6 +730,13 @@ func TestGraphQLParseSchema(t *testing.T) {
 			result:  ast.MustParseTerm("{}"),
 			wantErr: false,
 		},
+		// TODO: InterfaceToValue allocates a ton of memory and never comes back in this case
+		// {
+		//	 note:    "complex schema",
+		//	 schema:  ast.NewTerm(ast.String(complexGQLSchema)),
+		//	 result:  ast.MustParseTerm("{}"),
+		//	 wantErr: false,
+		// },
 	}
 
 	in := `{"inter_query_builtin_value_cache": {"max_num_entries": 10},}`
