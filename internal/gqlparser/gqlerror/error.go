@@ -51,8 +51,6 @@ func (err *Error) Error() string {
 	if len(err.Locations) > 0 {
 		res.WriteByte(':')
 		res.WriteString(strconv.Itoa(err.Locations[0].Line))
-		res.WriteByte(':')
-		res.WriteString(strconv.Itoa(err.Locations[0].Column))
 	}
 
 	res.WriteString(": ")
