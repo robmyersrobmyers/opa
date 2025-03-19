@@ -31,10 +31,6 @@ type Definition struct {
 
 	Position *Position `dump:"-"`
 	BuiltIn  bool      `dump:"-"`
-
-	BeforeDescriptionComment *CommentGroup
-	AfterDescriptionComment  *CommentGroup
-	EndOfDefinitionComment   *CommentGroup
 }
 
 func (d *Definition) IsLeafType() bool {
@@ -70,9 +66,6 @@ type FieldDefinition struct {
 	Type         *Type
 	Directives   DirectiveList
 	Position     *Position `dump:"-"`
-
-	BeforeDescriptionComment *CommentGroup
-	AfterDescriptionComment  *CommentGroup
 }
 
 type ArgumentDefinition struct {
@@ -82,9 +75,6 @@ type ArgumentDefinition struct {
 	Type         *Type
 	Directives   DirectiveList
 	Position     *Position `dump:"-"`
-
-	BeforeDescriptionComment *CommentGroup
-	AfterDescriptionComment  *CommentGroup
 }
 
 type EnumValueDefinition struct {
@@ -92,9 +82,6 @@ type EnumValueDefinition struct {
 	Name        string
 	Directives  DirectiveList
 	Position    *Position `dump:"-"`
-
-	BeforeDescriptionComment *CommentGroup
-	AfterDescriptionComment  *CommentGroup
 }
 
 type DirectiveDefinition struct {
@@ -104,7 +91,4 @@ type DirectiveDefinition struct {
 	Locations    []DirectiveLocation
 	IsRepeatable bool
 	Position     *Position `dump:"-"`
-
-	BeforeDescriptionComment *CommentGroup
-	AfterDescriptionComment  *CommentGroup
 }

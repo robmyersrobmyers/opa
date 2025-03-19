@@ -1,4 +1,4 @@
-package rules
+package validator
 
 import (
 	"github.com/open-policy-agent/opa/internal/gqlparser/ast"
@@ -7,10 +7,9 @@ import (
 	. "github.com/open-policy-agent/opa/internal/gqlparser/validator"
 )
 
-var UniqueInputFieldNamesRule = Rule{
-	Name: "UniqueInputFieldNames",
-	RuleFunc: func(observers *Events, addError AddErrFunc) {
-		observers.OnValue(func(walker *Walker, value *ast.Value) {
+func init() {
+	AddRule("UniqueInputFieldNames", func(observers *Events, addError AddErrFunc) {
+		observers.OnValue(func(_ *Walker, value *ast.Value) {
 			if value.Kind != ast.ObjectValue {
 				return
 			}
@@ -26,9 +25,5 @@ var UniqueInputFieldNamesRule = Rule{
 				seen[field.Name] = true
 			}
 		})
-	},
-}
-
-func init() {
-	AddRule(UniqueInputFieldNamesRule.Name, UniqueInputFieldNamesRule.RuleFunc)
+	})
 }

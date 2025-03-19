@@ -1,4 +1,4 @@
-package rules
+package validator
 
 import (
 	"github.com/open-policy-agent/opa/internal/gqlparser/ast"
@@ -7,9 +7,8 @@ import (
 	. "github.com/open-policy-agent/opa/internal/gqlparser/validator"
 )
 
-var LoneAnonymousOperationRule = Rule{
-	Name: "LoneAnonymousOperation",
-	RuleFunc: func(observers *Events, addError AddErrFunc) {
+func init() {
+	AddRule("LoneAnonymousOperation", func(observers *Events, addError AddErrFunc) {
 		observers.OnOperation(func(walker *Walker, operation *ast.OperationDefinition) {
 			if operation.Name == "" && len(walker.Document.Operations) > 1 {
 				addError(
@@ -18,9 +17,5 @@ var LoneAnonymousOperationRule = Rule{
 				)
 			}
 		})
-	},
-}
-
-func init() {
-	AddRule(LoneAnonymousOperationRule.Name, LoneAnonymousOperationRule.RuleFunc)
+	})
 }

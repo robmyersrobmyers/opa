@@ -1,4 +1,4 @@
-package rules
+package validator
 
 import (
 	"github.com/open-policy-agent/opa/internal/gqlparser/ast"
@@ -7,19 +7,19 @@ import (
 	. "github.com/open-policy-agent/opa/internal/gqlparser/validator"
 )
 
-var NoUnusedFragmentsRule = Rule{
-	Name: "NoUnusedFragments",
-	RuleFunc: func(observers *Events, addError AddErrFunc) {
+func init() {
+	AddRule("NoUnusedFragments", func(observers *Events, addError AddErrFunc) {
+
 		inFragmentDefinition := false
 		fragmentNameUsed := make(map[string]bool)
 
-		observers.OnFragmentSpread(func(walker *Walker, fragmentSpread *ast.FragmentSpread) {
+		observers.OnFragmentSpread(func(_ *Walker, fragmentSpread *ast.FragmentSpread) {
 			if !inFragmentDefinition {
 				fragmentNameUsed[fragmentSpread.Name] = true
 			}
 		})
 
-		observers.OnFragment(func(walker *Walker, fragment *ast.FragmentDefinition) {
+		observers.OnFragment(func(_ *Walker, fragment *ast.FragmentDefinition) {
 			inFragmentDefinition = true
 			if !fragmentNameUsed[fragment.Name] {
 				addError(
@@ -28,9 +28,5 @@ var NoUnusedFragmentsRule = Rule{
 				)
 			}
 		})
-	},
-}
-
-func init() {
-	AddRule(NoUnusedFragmentsRule.Name, NoUnusedFragmentsRule.RuleFunc)
+	})
 }

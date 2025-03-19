@@ -1,4 +1,4 @@
-package rules
+package validator
 
 import (
 	"bytes"
@@ -11,9 +11,9 @@ import (
 	. "github.com/open-policy-agent/opa/internal/gqlparser/validator"
 )
 
-var OverlappingFieldsCanBeMergedRule = Rule{
-	Name: "OverlappingFieldsCanBeMerged",
-	RuleFunc: func(observers *Events, addError AddErrFunc) {
+func init() {
+
+	AddRule("OverlappingFieldsCanBeMerged", func(observers *Events, addError AddErrFunc) {
 		/**
 		 * Algorithm:
 		 *
@@ -105,11 +105,7 @@ var OverlappingFieldsCanBeMergedRule = Rule{
 				conflict.addFieldsConflictMessage(addError)
 			}
 		})
-	},
-}
-
-func init() {
-	AddRule(OverlappingFieldsCanBeMergedRule.Name, OverlappingFieldsCanBeMergedRule.RuleFunc)
+	})
 }
 
 type pairSet struct {
@@ -308,8 +304,10 @@ func (m *overlappingFieldsCanBeMergedManager) collectConflictsBetweenFieldsAndFr
 }
 
 func (m *overlappingFieldsCanBeMergedManager) collectConflictsBetweenFragments(conflicts *conflictMessageContainer, areMutuallyExclusive bool, fragmentSpreadA *ast.FragmentSpread, fragmentSpreadB *ast.FragmentSpread) {
+
 	var check func(fragmentSpreadA *ast.FragmentSpread, fragmentSpreadB *ast.FragmentSpread)
 	check = func(fragmentSpreadA *ast.FragmentSpread, fragmentSpreadB *ast.FragmentSpread) {
+
 		if fragmentSpreadA.Name == fragmentSpreadB.Name {
 			return
 		}

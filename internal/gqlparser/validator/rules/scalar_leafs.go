@@ -1,4 +1,4 @@
-package rules
+package validator
 
 import (
 	"github.com/open-policy-agent/opa/internal/gqlparser/ast"
@@ -7,9 +7,8 @@ import (
 	. "github.com/open-policy-agent/opa/internal/gqlparser/validator"
 )
 
-var ScalarLeafsRule = Rule{
-	Name: "ScalarLeafs",
-	RuleFunc: func(observers *Events, addError AddErrFunc) {
+func init() {
+	AddRule("ScalarLeafs", func(observers *Events, addError AddErrFunc) {
 		observers.OnField(func(walker *Walker, field *ast.Field) {
 			if field.Definition == nil {
 				return
@@ -35,9 +34,5 @@ var ScalarLeafsRule = Rule{
 				)
 			}
 		})
-	},
-}
-
-func init() {
-	AddRule(ScalarLeafsRule.Name, ScalarLeafsRule.RuleFunc)
+	})
 }

@@ -6,7 +6,7 @@ import (
 	"github.com/open-policy-agent/opa/internal/gqlparser/ast"
 )
 
-//go:embed imported/prelude.graphql
+//go:embed prelude.graphql
 var preludeGraphql string
 
 var Prelude = &ast.Source{

@@ -1,4 +1,4 @@
-package rules
+package validator
 
 import (
 	"github.com/open-policy-agent/opa/internal/gqlparser/ast"
@@ -7,21 +7,16 @@ import (
 	. "github.com/open-policy-agent/opa/internal/gqlparser/validator"
 )
 
-var UniqueArgumentNamesRule = Rule{
-	Name: "UniqueArgumentNames",
-	RuleFunc: func(observers *Events, addError AddErrFunc) {
-		observers.OnField(func(walker *Walker, field *ast.Field) {
+func init() {
+	AddRule("UniqueArgumentNames", func(observers *Events, addError AddErrFunc) {
+		observers.OnField(func(_ *Walker, field *ast.Field) {
 			checkUniqueArgs(field.Arguments, addError)
 		})
 
-		observers.OnDirective(func(walker *Walker, directive *ast.Directive) {
+		observers.OnDirective(func(_ *Walker, directive *ast.Directive) {
 			checkUniqueArgs(directive.Arguments, addError)
 		})
-	},
-}
-
-func init() {
-	AddRule(UniqueArgumentNamesRule.Name, UniqueArgumentNamesRule.RuleFunc)
+	})
 }
 
 func checkUniqueArgs(args ast.ArgumentList, addError AddErrFunc) {

@@ -1,4 +1,4 @@
-package rules
+package validator
 
 import (
 	"github.com/open-policy-agent/opa/internal/gqlparser/ast"
@@ -7,16 +7,15 @@ import (
 	. "github.com/open-policy-agent/opa/internal/gqlparser/validator"
 )
 
-var KnownDirectivesRule = Rule{
-	Name: "KnownDirectives",
-	RuleFunc: func(observers *Events, addError AddErrFunc) {
+func init() {
+	AddRule("KnownDirectives", func(observers *Events, addError AddErrFunc) {
 		type mayNotBeUsedDirective struct {
 			Name   string
 			Line   int
 			Column int
 		}
-		seen := map[mayNotBeUsedDirective]bool{}
-		observers.OnDirective(func(walker *Walker, directive *ast.Directive) {
+		var seen = map[mayNotBeUsedDirective]bool{}
+		observers.OnDirective(func(_ *Walker, directive *ast.Directive) {
 			if directive.Definition == nil {
 				addError(
 					Message(`Unknown directive "@%s".`, directive.Name),
@@ -46,9 +45,5 @@ var KnownDirectivesRule = Rule{
 				seen[tmp] = true
 			}
 		})
-	},
-}
-
-func init() {
-	AddRule(KnownDirectivesRule.Name, KnownDirectivesRule.RuleFunc)
+	})
 }

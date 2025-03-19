@@ -26,7 +26,6 @@ type Value struct {
 	Children ChildValueList
 	Kind     ValueKind
 	Position *Position `dump:"-"`
-	Comment  *CommentGroup
 
 	// Require validation
 	Definition         *Definition
@@ -38,7 +37,6 @@ type ChildValue struct {
 	Name     string
 	Value    *Value
 	Position *Position `dump:"-"`
-	Comment  *CommentGroup
 }
 
 func (v *Value) Value(vars map[string]interface{}) (interface{}, error) {

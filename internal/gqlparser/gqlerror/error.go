@@ -1,17 +1,17 @@
 package gqlerror
 
 import (
+	"bytes"
 	"errors"
 	"fmt"
 	"strconv"
-	"strings"
 
 	"github.com/open-policy-agent/opa/internal/gqlparser/ast"
 )
 
-// Error is the standard graphql error type described in https://spec.graphql.org/draft/#sec-Errors
+// Error is the standard graphql error type described in https://facebook.github.io/graphql/draft/#sec-Errors
 type Error struct {
-	Err        error                  `json:"-"`
+	err        error                  `json:"-"`
 	Message    string                 `json:"message"`
 	Path       ast.Path               `json:"path,omitempty"`
 	Locations  []Location             `json:"locations,omitempty"`
@@ -38,7 +38,7 @@ type Location struct {
 type List []*Error
 
 func (err *Error) Error() string {
-	var res strings.Builder
+	var res bytes.Buffer
 	if err == nil {
 		return ""
 	}
@@ -51,6 +51,8 @@ func (err *Error) Error() string {
 	if len(err.Locations) > 0 {
 		res.WriteByte(':')
 		res.WriteString(strconv.Itoa(err.Locations[0].Line))
+		res.WriteByte(':')
+		res.WriteString(strconv.Itoa(err.Locations[0].Column))
 	}
 
 	res.WriteString(": ")
@@ -64,23 +66,16 @@ func (err *Error) Error() string {
 	return res.String()
 }
 
-func (err *Error) pathString() string {
+func (err Error) pathString() string {
 	return err.Path.String()
 }
 
-func (err *Error) Unwrap() error {
-	return err.Err
-}
-
-func (err *Error) AsError() error {
-	if err == nil {
-		return nil
-	}
-	return err
+func (err Error) Unwrap() error {
+	return err.err
 }
 
 func (errs List) Error() string {
-	var buf strings.Builder
+	var buf bytes.Buffer
 	for _, err := range errs {
 		buf.WriteString(err.Error())
 		buf.WriteByte('\n')
@@ -106,45 +101,11 @@ func (errs List) As(target interface{}) bool {
 	return false
 }
 
-func (errs List) Unwrap() []error {
-	l := make([]error, len(errs))
-	for i, err := range errs {
-		l[i] = err
-	}
-	return l
-}
-
 func WrapPath(path ast.Path, err error) *Error {
-	if err == nil {
-		return nil
-	}
 	return &Error{
-		Err:     err,
+		err:     err,
 		Message: err.Error(),
 		Path:    path,
-	}
-}
-
-func Wrap(err error) *Error {
-	if err == nil {
-		return nil
-	}
-	return &Error{
-		Err:     err,
-		Message: err.Error(),
-	}
-}
-
-func WrapIfUnwrapped(err error) *Error {
-	if err == nil {
-		return nil
-	}
-	if gqlErr, ok := err.(*Error); ok {
-		return gqlErr
-	}
-	return &Error{
-		Err:     err,
-		Message: err.Error(),
 	}
 }
 

@@ -52,14 +52,15 @@ func Test(t *testing.T, filename string, f func(t *testing.T, input string) Spec
 			for _, spec := range specs {
 				t.Run(spec.Name, func(t *testing.T) {
 					result := f(t, spec.Input)
-					switch {
-					case spec.Error == nil:
+
+					if spec.Error == nil {
 						if result.Error != nil {
-							t.Errorf("unexpected error %s", result.Error.Message)
+							gqlErr := err.(*gqlerror.Error)
+							t.Errorf("unexpected error %s", gqlErr.Message)
 						}
-					case result.Error == nil:
+					} else if result.Error == nil {
 						t.Errorf("expected error but got none")
-					default:
+					} else {
 						if result.Error.Message != spec.Error.Message {
 							t.Errorf("wrong error returned\nexpected: %s\ngot:      %s", spec.Error.Message, result.Error.Message)
 						}
@@ -113,9 +114,9 @@ func Test(t *testing.T, filename string, f func(t *testing.T, input string) Spec
 					result.AST = strings.TrimSpace(result.AST)
 
 					if spec.AST != "" && spec.AST != result.AST {
-						diffStr := diff.LineDiff(spec.AST, result.AST)
-						if diffStr != "" {
-							t.Errorf("AST mismatch:\n%s", diffStr)
+						diff := diff.LineDiff(spec.AST, result.AST)
+						if diff != "" {
+							t.Errorf("AST mismatch:\n%s", diff)
 						}
 					}
 
@@ -134,4 +135,5 @@ func Test(t *testing.T, filename string, f func(t *testing.T, input string) Spec
 			}
 		})
 	}
+
 }

@@ -1,15 +1,15 @@
-package rules
+package validator
 
 import (
-	//nolint:revive // Validator rules each use dot imports for convenience.
 	"github.com/open-policy-agent/opa/internal/gqlparser/ast"
+
+	//nolint:revive // Validator rules each use dot imports for convenience.
 	. "github.com/open-policy-agent/opa/internal/gqlparser/validator"
 )
 
-var ProvidedRequiredArgumentsRule = Rule{
-	Name: "ProvidedRequiredArguments",
-	RuleFunc: func(observers *Events, addError AddErrFunc) {
-		observers.OnField(func(walker *Walker, field *ast.Field) {
+func init() {
+	AddRule("ProvidedRequiredArguments", func(observers *Events, addError AddErrFunc) {
+		observers.OnField(func(_ *Walker, field *ast.Field) {
 			if field.Definition == nil {
 				return
 			}
@@ -35,7 +35,7 @@ var ProvidedRequiredArgumentsRule = Rule{
 			}
 		})
 
-		observers.OnDirective(func(walker *Walker, directive *ast.Directive) {
+		observers.OnDirective(func(_ *Walker, directive *ast.Directive) {
 			if directive.Definition == nil {
 				return
 			}
@@ -60,9 +60,5 @@ var ProvidedRequiredArgumentsRule = Rule{
 				)
 			}
 		})
-	},
-}
-
-func init() {
-	AddRule(ProvidedRequiredArgumentsRule.Name, ProvidedRequiredArgumentsRule.RuleFunc)
+	})
 }

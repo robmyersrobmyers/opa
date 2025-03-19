@@ -2,11 +2,9 @@ schema {
     query: Query
 }
 
-extend schema @exampleOnSchemaDirective(name: "foo") {
+extend schema {
     subscription: Subscription
 }
-
-directive @exampleOnSchemaDirective(name: String!) on SCHEMA
 
 type Query {
     dogs: [Dog!]!

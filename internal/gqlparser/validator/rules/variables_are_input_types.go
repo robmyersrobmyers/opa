@@ -1,4 +1,4 @@
-package rules
+package validator
 
 import (
 	"github.com/open-policy-agent/opa/internal/gqlparser/ast"
@@ -7,10 +7,9 @@ import (
 	. "github.com/open-policy-agent/opa/internal/gqlparser/validator"
 )
 
-var VariablesAreInputTypesRule = Rule{
-	Name: "VariablesAreInputTypes",
-	RuleFunc: func(observers *Events, addError AddErrFunc) {
-		observers.OnOperation(func(walker *Walker, operation *ast.OperationDefinition) {
+func init() {
+	AddRule("VariablesAreInputTypes", func(observers *Events, addError AddErrFunc) {
+		observers.OnOperation(func(_ *Walker, operation *ast.OperationDefinition) {
 			for _, def := range operation.VariableDefinitions {
 				if def.Definition == nil {
 					continue
@@ -27,9 +26,5 @@ var VariablesAreInputTypesRule = Rule{
 				}
 			}
 		})
-	},
-}
-
-func init() {
-	AddRule(VariablesAreInputTypesRule.Name, VariablesAreInputTypesRule.RuleFunc)
+	})
 }

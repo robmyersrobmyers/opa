@@ -11,15 +11,7 @@ import (
 )
 
 func LoadSchema(str ...*ast.Source) (*ast.Schema, error) {
-	schema, err := validator.LoadSchema(append([]*ast.Source{validator.Prelude}, str...)...)
-	gqlErr, ok := err.(*gqlerror.Error)
-	if ok {
-		return schema, gqlErr
-	}
-	if err != nil {
-		return schema, gqlerror.Wrap(err)
-	}
-	return schema, nil
+	return validator.LoadSchema(append([]*ast.Source{validator.Prelude}, str...)...)
 }
 
 func MustLoadSchema(str ...*ast.Source) *ast.Schema {
@@ -33,14 +25,11 @@ func MustLoadSchema(str ...*ast.Source) *ast.Schema {
 func LoadQuery(schema *ast.Schema, str string) (*ast.QueryDocument, gqlerror.List) {
 	query, err := parser.ParseQuery(&ast.Source{Input: str})
 	if err != nil {
-		gqlErr, ok := err.(*gqlerror.Error)
-		if ok {
-			return nil, gqlerror.List{gqlErr}
-		}
-		return nil, gqlerror.List{gqlerror.Wrap(err)}
+		gqlErr := err.(*gqlerror.Error)
+		return nil, gqlerror.List{gqlErr}
 	}
 	errs := validator.Validate(schema, query)
-	if len(errs) > 0 {
+	if errs != nil {
 		return nil, errs
 	}
 

@@ -55,7 +55,7 @@ func (s *Lexer) makeValueToken(kind Type, value string) (Token, error) {
 	}, nil
 }
 
-func (s *Lexer) makeError(format string, args ...interface{}) (Token, *gqlerror.Error) {
+func (s *Lexer) makeError(format string, args ...interface{}) (Token, error) {
 	column := s.endRunes - s.lineStartRunes + 1
 	return Token{
 		Kind: Invalid,
@@ -74,7 +74,8 @@ func (s *Lexer) makeError(format string, args ...interface{}) (Token, *gqlerror.
 // This skips over whitespace and comments until it finds the next lexable
 // token, then lexes punctuators immediately or calls the appropriate helper
 // function for more complicated tokens.
-func (s *Lexer) ReadToken() (Token, error) {
+func (s *Lexer) ReadToken() (token Token, err error) {
+
 	s.ws()
 	s.start = s.end
 	s.startRunes = s.endRunes
@@ -120,7 +121,10 @@ func (s *Lexer) ReadToken() (Token, error) {
 	case '|':
 		return s.makeValueToken(Pipe, "")
 	case '#':
-		return s.readComment()
+		if comment, err := s.readComment(); err != nil {
+			return comment, err
+		}
+		return s.ReadToken()
 
 	case '_', 'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k', 'l', 'm', 'n', 'o', 'p', 'q', 'r', 's', 't', 'u', 'v', 'w', 'x', 'y', 'z', 'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P', 'Q', 'R', 'S', 'T', 'U', 'V', 'W', 'X', 'Y', 'Z':
 		return s.readName()
@@ -254,6 +258,7 @@ func (s *Lexer) readNumber() (Token, error) {
 		return s.makeToken(Float)
 	}
 	return s.makeToken(Int)
+
 }
 
 // acceptByte if it matches any of given bytes, returning true if it found anything
@@ -316,8 +321,8 @@ func (s *Lexer) readString() (Token, error) {
 		}
 		switch r {
 		default:
-			char := rune(r)
-			w := 1
+			var char = rune(r)
+			var w = 1
 
 			// skip unicode overhead if we are in the ascii range
 			if r >= 127 {
@@ -421,29 +426,17 @@ func (s *Lexer) readBlockString() (Token, error) {
 		r := s.Input[s.end]
 
 		// Closing triple quote (""")
-		if r == '"' {
-			// Count consecutive quotes
-			quoteCount := 1
-			i := s.end + 1
-			for i < inputLen && s.Input[i] == '"' {
-				quoteCount++
-				i++
-			}
+		if r == '"' && s.end+3 <= inputLen && s.Input[s.end:s.end+3] == `"""` {
+			t, err := s.makeValueToken(BlockString, blockStringValue(buf.String()))
 
-			// If we have at least 3 quotes, use the last 3 as the closing quote
-			if quoteCount >= 3 {
-				// Add any extra quotes to the buffer (except the last 3)
-				for j := 0; j < quoteCount-3; j++ {
-					buf.WriteByte('"')
-				}
+			// the token should not include the quotes in its value, but should cover them in its position
+			t.Pos.Start -= 3
+			t.Pos.End += 3
 
-				t, err := s.makeValueToken(BlockString, blockStringValue(buf.String()))
-				t.Pos.Start -= 3
-				t.Pos.End += 3
-				s.end += quoteCount
-				s.endRunes += quoteCount
-				return t, err
-			}
+			// skip the close quote
+			s.end += 3
+			s.endRunes += 3
+			return t, err
 		}
 
 		// SourceCharacter
@@ -451,12 +444,11 @@ func (s *Lexer) readBlockString() (Token, error) {
 			return s.makeError(`Invalid character within String: "\u%04d".`, r)
 		}
 
-		switch {
-		case r == '\\' && s.end+4 <= inputLen && s.Input[s.end:s.end+4] == `\"""`:
+		if r == '\\' && s.end+4 <= inputLen && s.Input[s.end:s.end+4] == `\"""` {
 			buf.WriteString(`"""`)
 			s.end += 4
 			s.endRunes += 4
-		case r == '\r':
+		} else if r == '\r' {
 			if s.end+1 < inputLen && s.Input[s.end+1] == '\n' {
 				s.end++
 				s.endRunes++
@@ -467,9 +459,9 @@ func (s *Lexer) readBlockString() (Token, error) {
 			s.endRunes++
 			s.line++
 			s.lineStartRunes = s.endRunes
-		default:
-			char := rune(r)
-			w := 1
+		} else {
+			var char = rune(r)
+			var w = 1
 
 			// skip unicode overhead if we are in the ascii range
 			if r >= 127 {

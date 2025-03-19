@@ -12,14 +12,14 @@ import (
 )
 
 func LoadSchema(inputs ...*Source) (*Schema, error) {
-	sd, err := parser.ParseSchemas(inputs...)
+	ast, err := parser.ParseSchemas(inputs...)
 	if err != nil {
-		return nil, gqlerror.WrapIfUnwrapped(err)
+		return nil, err
 	}
-	return ValidateSchemaDocument(sd)
+	return ValidateSchemaDocument(ast)
 }
 
-func ValidateSchemaDocument(sd *SchemaDocument) (*Schema, error) {
+func ValidateSchemaDocument(ast *SchemaDocument) (*Schema, error) {
 	schema := Schema{
 		Types:         map[string]*Definition{},
 		Directives:    map[string]*DirectiveDefinition{},
@@ -27,16 +27,16 @@ func ValidateSchemaDocument(sd *SchemaDocument) (*Schema, error) {
 		Implements:    map[string][]*Definition{},
 	}
 
-	for i, def := range sd.Definitions {
+	for i, def := range ast.Definitions {
 		if schema.Types[def.Name] != nil {
 			return nil, gqlerror.ErrorPosf(def.Position, "Cannot redeclare type %s.", def.Name)
 		}
-		schema.Types[def.Name] = sd.Definitions[i]
+		schema.Types[def.Name] = ast.Definitions[i]
 	}
 
-	defs := append(DefinitionList{}, sd.Definitions...)
+	defs := append(DefinitionList{}, ast.Definitions...)
 
-	for _, ext := range sd.Extensions {
+	for _, ext := range ast.Extensions {
 		def := schema.Types[ext.Name]
 		if def == nil {
 			schema.Types[ext.Name] = &Definition{
@@ -80,13 +80,13 @@ func ValidateSchemaDocument(sd *SchemaDocument) (*Schema, error) {
 		}
 	}
 
-	for i, dir := range sd.Directives {
+	for i, dir := range ast.Directives {
 		if schema.Directives[dir.Name] != nil {
 			// While the spec says SDL must not (§3.5) explicitly define builtin
 			// scalars, it may (§3.13) define builtin directives. Here we check for
 			// that, and reject doubly-defined directives otherwise.
 			switch dir.Name {
-			case "include", "skip", "deprecated", "specifiedBy", "defer", "oneOf": // the builtins
+			case "include", "skip", "deprecated", "specifiedBy": // the builtins
 				// In principle here we might want to validate that the
 				// directives are the same. But they might not be, if the
 				// server has an older spec than we do. (Plus, validating this
@@ -99,16 +99,16 @@ func ValidateSchemaDocument(sd *SchemaDocument) (*Schema, error) {
 				return nil, gqlerror.ErrorPosf(dir.Position, "Cannot redeclare directive %s.", dir.Name)
 			}
 		}
-		schema.Directives[dir.Name] = sd.Directives[i]
+		schema.Directives[dir.Name] = ast.Directives[i]
 	}
 
-	if len(sd.Schema) > 1 {
-		return nil, gqlerror.ErrorPosf(sd.Schema[1].Position, "Cannot have multiple schema entry points, consider schema extensions instead.")
+	if len(ast.Schema) > 1 {
+		return nil, gqlerror.ErrorPosf(ast.Schema[1].Position, "Cannot have multiple schema entry points, consider schema extensions instead.")
 	}
 
-	if len(sd.Schema) == 1 {
-		schema.Description = sd.Schema[0].Description
-		for _, entrypoint := range sd.Schema[0].OperationTypes {
+	if len(ast.Schema) == 1 {
+		schema.Description = ast.Schema[0].Description
+		for _, entrypoint := range ast.Schema[0].OperationTypes {
 			def := schema.Types[entrypoint.Type]
 			if def == nil {
 				return nil, gqlerror.ErrorPosf(entrypoint.Position, "Schema root %s refers to a type %s that does not exist.", entrypoint.Operation, entrypoint.Type)
@@ -122,13 +122,9 @@ func ValidateSchemaDocument(sd *SchemaDocument) (*Schema, error) {
 				schema.Subscription = def
 			}
 		}
-		if err := validateDirectives(&schema, sd.Schema[0].Directives, LocationSchema, nil); err != nil {
-			return nil, err
-		}
-		schema.SchemaDirectives = append(schema.SchemaDirectives, sd.Schema[0].Directives...)
 	}
 
-	for _, ext := range sd.SchemaExtension {
+	for _, ext := range ast.SchemaExtension {
 		for _, entrypoint := range ext.OperationTypes {
 			def := schema.Types[entrypoint.Type]
 			if def == nil {
@@ -143,10 +139,6 @@ func ValidateSchemaDocument(sd *SchemaDocument) (*Schema, error) {
 				schema.Subscription = def
 			}
 		}
-		if err := validateDirectives(&schema, ext.Directives, LocationSchema, nil); err != nil {
-			return nil, err
-		}
-		schema.SchemaDirectives = append(schema.SchemaDirectives, ext.Directives...)
 	}
 
 	if err := validateTypeDefinitions(&schema); err != nil {
@@ -160,7 +152,7 @@ func ValidateSchemaDocument(sd *SchemaDocument) (*Schema, error) {
 	// Inferred root operation type names should be performed only when a `schema` directive is
 	// **not** provided, when it is, `Mutation` and `Subscription` becomes valid types and are not
 	// assigned as a root operation on the schema.
-	if len(sd.Schema) == 0 {
+	if len(ast.Schema) == 0 {
 		if schema.Query == nil && schema.Types["Query"] != nil {
 			schema.Query = schema.Types["Query"]
 		}
@@ -292,9 +284,6 @@ func validateDefinition(schema *Schema, def *Definition) *gqlerror.Error {
 					return gqlerror.ErrorPosf(def.Position, "%s %s: non-enum value %s.", def.Kind, def.Name, value.Name)
 				}
 			}
-			if err := validateDirectives(schema, value.Directives, LocationEnumValue, nil); err != nil {
-				return err
-			}
 		}
 	case InputObject:
 		if len(def.Fields) == 0 {
@@ -370,12 +359,11 @@ func validateDirectives(schema *Schema, dirs DirectiveList, location DirectiveLo
 		if currentDirective != nil && dir.Name == currentDirective.Name {
 			return gqlerror.ErrorPosf(dir.Position, "Directive %s cannot refer to itself.", currentDirective.Name)
 		}
-		dirDefinition := schema.Directives[dir.Name]
-		if dirDefinition == nil {
+		if schema.Directives[dir.Name] == nil {
 			return gqlerror.ErrorPosf(dir.Position, "Undefined directive %s.", dir.Name)
 		}
 		validKind := false
-		for _, dirLocation := range dirDefinition.Locations {
+		for _, dirLocation := range schema.Directives[dir.Name].Locations {
 			if dirLocation == location {
 				validKind = true
 				break
@@ -384,18 +372,6 @@ func validateDirectives(schema *Schema, dirs DirectiveList, location DirectiveLo
 		if !validKind {
 			return gqlerror.ErrorPosf(dir.Position, "Directive %s is not applicable on %s.", dir.Name, location)
 		}
-		for _, arg := range dir.Arguments {
-			if dirDefinition.Arguments.ForName(arg.Name) == nil {
-				return gqlerror.ErrorPosf(arg.Position, "Undefined argument %s for directive %s.", arg.Name, dir.Name)
-			}
-		}
-		for _, schemaArg := range dirDefinition.Arguments {
-			if schemaArg.Type.NonNull && schemaArg.DefaultValue == nil {
-				if arg := dir.Arguments.ForName(schemaArg.Name); arg == nil || arg.Value.Kind == NullValue {
-					return gqlerror.ErrorPosf(dir.Position, "Argument %s for directive %s cannot be null.", schemaArg.Name, dir.Name)
-				}
-			}
-		}
 		dir.Definition = schema.Directives[dir.Name]
 	}
 	return nil
@@ -403,7 +379,7 @@ func validateDirectives(schema *Schema, dirs DirectiveList, location DirectiveLo
 
 func validateImplements(schema *Schema, def *Definition, intfName string) *gqlerror.Error {
 	// see validation rules at the bottom of
-	// https://spec.graphql.org/October2021/#sec-Objects
+	// https://facebook.github.io/graphql/October2021/#sec-Objects
 	intf := schema.Types[intfName]
 	if intf == nil {
 		return gqlerror.ErrorPosf(def.Position, "Undefined type %s.", strconv.Quote(intfName))

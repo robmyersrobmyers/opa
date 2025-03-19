@@ -72,11 +72,6 @@
     stringListField: [String]
   }
 
-  input OneOfInput @oneOf {
-    stringField: String
-    intField: Int
-  }
-
   type ComplicatedArgs {
     intArgField(intArg: Int): String
     nonNullIntArgField(nonNullIntArg: Int!): String
@@ -88,7 +83,6 @@
     stringListArgField(stringListArg: [String]): String
     stringListNonNullArgField(stringListNonNullArg: [String!]): String
     complexArgField(complexArg: ComplexInput): String
-    oneOfArgField(oneOfArg: OneOfInput): String
     multipleReqs(req1: Int!, req2: Int!): String
     nonNullFieldWithDefault(arg: Int! = 0): String
     multipleOpts(opt1: Int = 0, opt2: Int = 0): String
@@ -103,7 +97,7 @@
     catOrDog: CatOrDog
     complicatedArgs: ComplicatedArgs
   }
-  # injected becuase upstream spec is missing some types
+  # injected because upstream spec is missing some types
   extend type QueryRoot {
       field: T
       f1: Type
@@ -456,11 +450,6 @@
     stringListField: [String]
   }
 
-  input OneOfInput @oneOf {
-    stringField: String
-    intField: Int
-  }
-
   type ComplicatedArgs {
     intArgField(intArg: Int): String
     nonNullIntArgField(nonNullIntArg: Int!): String
@@ -472,7 +461,6 @@
     stringListArgField(stringListArg: [String]): String
     stringListNonNullArgField(stringListNonNullArg: [String!]): String
     complexArgField(complexArg: ComplexInput): String
-    oneOfArgField(oneOfArg: OneOfInput): String
     multipleReqs(req1: Int!, req2: Int!): String
     nonNullFieldWithDefault(arg: Int! = 0): String
     multipleOpts(opt1: Int = 0, opt2: Int = 0): String
@@ -499,4 +487,4 @@
   }
 
   scalar Any
-- ''
+- ""
