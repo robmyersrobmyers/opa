@@ -4,8 +4,8 @@
 
 https://github.com/vektah/gqlparser was duplicated into `internal/gqlparser` folder, so that we no longer have to track the external library 1-to-1, and so that OPA library users who want to use newer/older gqlparser versions won't have to match our GraphQL parser's version.
 
-The current version we have forked from is commit [`b3be96f` on branch `master`](https://github.com/vektah/gqlparser/commit/b3be96ff69fa97682c43570dcb6f75d08fdf8586), which is 2 commits past the [`v2.5.1`](https://github.com/vektah/gqlparser/releases/tag/v2.5.1) release tag.
-We picked this specific commit because the two commits after the 2.5.1 release dramatically improve the linter state of the library to be as strict or stricter than OPA's linting, allowing for nearly drop-in integration.
+The current version we have forked from is commit [`c70447b` on branch `master`](https://github.com/vektah/gqlparser/commit/c70447b63a050a400ed423e48cbfb4ff78e087ab), which is 4 commits past the [`v2.5.23`](https://github.com/vektah/gqlparser/releases/tag/v2.5.23) release tag.
+We picked this specific commit because it is the most recent commit available.
 
 We currently modify `gqlparser/gqlerror/error.go` to provide the line and column of the error location, so as to keep our `graphql` builtin error messages consistent.
 This requires either modifying all the library tests, or removing them.
