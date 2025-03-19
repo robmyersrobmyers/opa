@@ -1,4 +1,4 @@
-package validator
+package rules
 
 import (
 	"github.com/open-policy-agent/opa/internal/gqlparser/ast"
@@ -7,9 +7,9 @@ import (
 	. "github.com/open-policy-agent/opa/internal/gqlparser/validator"
 )
 
-func init() {
-	AddRule("PossibleFragmentSpreads", func(observers *Events, addError AddErrFunc) {
-
+var PossibleFragmentSpreadsRule = Rule{
+	Name: "PossibleFragmentSpreads",
+	RuleFunc: func(observers *Events, addError AddErrFunc) {
 		validate := func(walker *Walker, parentDef *ast.Definition, fragmentName string, emitError func()) {
 			if parentDef == nil {
 				return
@@ -66,5 +66,9 @@ func init() {
 				)
 			})
 		})
-	})
+	},
+}
+
+func init() {
+	AddRule(PossibleFragmentSpreadsRule.Name, PossibleFragmentSpreadsRule.RuleFunc)
 }

@@ -1,4 +1,4 @@
-package validator
+package rules
 
 import (
 	"github.com/open-policy-agent/opa/internal/gqlparser/ast"
@@ -7,11 +7,12 @@ import (
 	. "github.com/open-policy-agent/opa/internal/gqlparser/validator"
 )
 
-func init() {
-	AddRule("UniqueFragmentNames", func(observers *Events, addError AddErrFunc) {
+var UniqueFragmentNamesRule = Rule{
+	Name: "UniqueFragmentNames",
+	RuleFunc: func(observers *Events, addError AddErrFunc) {
 		seenFragments := map[string]bool{}
 
-		observers.OnFragment(func(_ *Walker, fragment *ast.FragmentDefinition) {
+		observers.OnFragment(func(walker *Walker, fragment *ast.FragmentDefinition) {
 			if seenFragments[fragment.Name] {
 				addError(
 					Message(`There can be only one fragment named "%s".`, fragment.Name),
@@ -20,5 +21,9 @@ func init() {
 			}
 			seenFragments[fragment.Name] = true
 		})
-	})
+	},
+}
+
+func init() {
+	AddRule(UniqueFragmentNamesRule.Name, UniqueFragmentNamesRule.RuleFunc)
 }

@@ -1,4 +1,4 @@
-package validator
+package rules
 
 import (
 	"github.com/open-policy-agent/opa/internal/gqlparser/ast"
@@ -7,9 +7,10 @@ import (
 	. "github.com/open-policy-agent/opa/internal/gqlparser/validator"
 )
 
-func init() {
-	AddRule("KnownFragmentNames", func(observers *Events, addError AddErrFunc) {
-		observers.OnFragmentSpread(func(_ *Walker, fragmentSpread *ast.FragmentSpread) {
+var KnownFragmentNamesRule = Rule{
+	Name: "KnownFragmentNames",
+	RuleFunc: func(observers *Events, addError AddErrFunc) {
+		observers.OnFragmentSpread(func(walker *Walker, fragmentSpread *ast.FragmentSpread) {
 			if fragmentSpread.Definition == nil {
 				addError(
 					Message(`Unknown fragment "%s".`, fragmentSpread.Name),
@@ -17,5 +18,9 @@ func init() {
 				)
 			}
 		})
-	})
+	},
+}
+
+func init() {
+	AddRule(KnownFragmentNamesRule.Name, KnownFragmentNamesRule.RuleFunc)
 }

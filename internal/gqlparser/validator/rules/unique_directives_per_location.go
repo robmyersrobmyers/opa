@@ -1,4 +1,4 @@
-package validator
+package rules
 
 import (
 	"github.com/open-policy-agent/opa/internal/gqlparser/ast"
@@ -7,9 +7,10 @@ import (
 	. "github.com/open-policy-agent/opa/internal/gqlparser/validator"
 )
 
-func init() {
-	AddRule("UniqueDirectivesPerLocation", func(observers *Events, addError AddErrFunc) {
-		observers.OnDirectiveList(func(_ *Walker, directives []*ast.Directive) {
+var UniqueDirectivesPerLocationRule = Rule{
+	Name: "UniqueDirectivesPerLocation",
+	RuleFunc: func(observers *Events, addError AddErrFunc) {
+		observers.OnDirectiveList(func(walker *Walker, directives []*ast.Directive) {
 			seen := map[string]bool{}
 
 			for _, dir := range directives {
@@ -22,5 +23,9 @@ func init() {
 				seen[dir.Name] = true
 			}
 		})
-	})
+	},
+}
+
+func init() {
+	AddRule(UniqueDirectivesPerLocationRule.Name, UniqueDirectivesPerLocationRule.RuleFunc)
 }
