@@ -6,6 +6,8 @@ package topdown
 
 import (
 	"context"
+	"fmt"
+	"os"
 	"testing"
 
 	"github.com/open-policy-agent/opa/v1/ast"
@@ -471,6 +473,7 @@ func TestGraphQLParseAndVerify(t *testing.T) {
 					expected := tc.result.Value.(*ast.Array).Elem(i)
 					actual := result.Value.(*ast.Array).Elem(i)
 					if !expected.Equal(actual) {
+						fmt.Fprintf(os.Stderr, "DEBUG: expected:\n%s\ngot:\n%s\n", expected.String(), actual.String())
 						t.Errorf("Unexpected value at result[%d] (%s), expected %#v, got %#v", i, resultItemDescription[i], expected, actual)
 						return
 					}

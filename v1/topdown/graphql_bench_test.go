@@ -32,6 +32,10 @@ var complexGQLSchemaJSON string
 // Convert the complex schema string into an Object
 var complexGQLSchemaObj *ast.Term = ast.MustParseTerm(complexGQLSchemaJSON).Value.(ast.Object).Get(ast.NewTerm(ast.String("__schema")))
 
+const complexGQLQueryASTString = `{"Operations":[{"Name":"","Operation":"query","SelectionSet":[{"Alias":"securityAdvisories","Name":"securityAdvisories","SelectionSet":[{"Alias":"totalCount","Name":"totalCount"}]}]}]}`
+
+var complexGQLQueryASTObj *ast.Term = ast.NewTerm(ast.String(complexGQLQueryASTString))
+
 //go:embed employee-schema.json
 var employeeGQLSchemaJSON string
 var employeeGQLSchemaObj *ast.Term = ast.MustParseTerm(employeeGQLSchemaJSON).Value.(ast.Object).Get(ast.NewTerm(ast.String("__schema")))
@@ -212,7 +216,7 @@ func BenchmarkGraphQLIsValid(b *testing.B) {
 			result: ast.BooleanTerm(true),
 		},
 		{
-			desc:   "Complex Schema - object",
+			desc:   "Complex Schema - string",
 			cache:  nil,
 			query:  ast.NewTerm(ast.String(`{ securityAdvisories { totalCount } }`)),
 			schema: ast.NewTerm(ast.String(complexGQLSchema)),
@@ -255,6 +259,178 @@ func BenchmarkGraphQLIsValid(b *testing.B) {
 	}
 }
 
-// TODO
-// func builtinGraphQLParse(_ BuiltinContext, operands []*ast.Term, iter func(*ast.Term) error) error {
-// func builtinGraphQLParseAndVerify(_ BuiltinContext, operands []*ast.Term, iter func(*ast.Term) error) error {
+func BenchmarkGraphQLParse(b *testing.B) {
+
+	// Share an InterQueryValueCache across multiple runs
+	// Tune number of entries to exceed number of distinct GQL schemas
+	in := `{"inter_query_builtin_value_cache": {"max_num_entries": 10},}`
+	config, _ := cache.ParseCachingConfig([]byte(in))
+	valueCache := cache.NewInterQueryValueCache(context.Background(), config)
+
+	// Use this to map result item position to purpose for better error messages
+	resultItemDescription := []string{"query_ast", "schema_ast"}
+
+	benches := []struct {
+		desc   string
+		schema *ast.Term
+		cache  cache.InterQueryValueCache
+		query  *ast.Term
+		result *ast.Term
+	}{
+		{
+			desc:   "Trivial Schema - string",
+			cache:  nil,
+			query:  ast.NewTerm(ast.String(`{ employeeByID(id: "alice") { salary } }`)),
+			schema: ast.NewTerm(ast.String(employeeGQLSchema)),
+			result: ast.ArrayTerm(
+				ast.NewTerm(employeeGQLQueryASTObj),
+				ast.NewTerm(employeeGQLSchemaASTObj),
+			),
+		},
+		{
+			desc:   "Trivial Schema with cache - string",
+			cache:  valueCache,
+			query:  ast.NewTerm(ast.String(`{ employeeByID(id: "alice") { salary } }`)),
+			schema: ast.NewTerm(ast.String(employeeGQLSchema)),
+			result: ast.ArrayTerm(
+				ast.NewTerm(employeeGQLQueryASTObj),
+				ast.NewTerm(employeeGQLSchemaASTObj),
+			),
+		},
+		// {
+		// 	desc:   "Complex Schema - string",
+		// 	cache:  nil,
+		// 	query:  ast.NewTerm(ast.String(`{ securityAdvisories { totalCount } }`)),
+		// 	schema: ast.NewTerm(ast.String(complexGQLSchema)),
+		// 	result: ast.ArrayTerm(
+		// 		complexGQLQueryASTObj,
+		// 		complexGQLSchemaObj,
+		// 	),
+		// },
+		// {
+		// 	desc:   "Complex Schema with cache - string",
+		// 	cache:  valueCache,
+		// 	query:  ast.NewTerm(ast.String(`{ securityAdvisories { totalCount } }`)),
+		// 	schema: ast.NewTerm(ast.String(complexGQLSchema)),
+		// 	result: ast.ArrayTerm(
+		// 		complexGQLQueryASTObj,
+		// 		complexGQLSchemaObj,
+		// 	),
+		// },
+		// TODO add objects
+	}
+	for _, bench := range benches {
+		b.Run(bench.desc, func(b *testing.B) {
+			for range b.N {
+				var result *ast.Term
+				b.StartTimer()
+				err := builtinGraphQLParse(
+					BuiltinContext{
+						InterQueryBuiltinValueCache: bench.cache,
+					},
+					[]*ast.Term{bench.query, bench.schema},
+					func(term *ast.Term) error {
+						result = term
+						return nil
+					},
+				)
+				b.StopTimer()
+				if err != nil {
+					b.Fatalf("unexpected error: %s", err)
+				}
+				if !bench.result.Equal(result) {
+					b.Errorf("Unexpected result, expected %#v, got %#v", bench.result, result)
+					return
+				}
+				// Check each item in array result
+				for i := range bench.result.Value.(*ast.Array).Len() {
+					expected := bench.result.Value.(*ast.Array).Elem(i)
+					actual := result.Value.(*ast.Array).Elem(i)
+					if !expected.Equal(actual) {
+						b.Errorf("Unexpected value at result[%d] (%s), expected %#v, got %#v", i, resultItemDescription[i], expected, actual)
+						return
+					}
+				}
+			}
+		})
+	}
+}
+
+func BenchmarkGraphQLParseAndVerify(b *testing.B) {
+
+	// Share an InterQueryValueCache across multiple runs
+	// Tune number of entries to exceed number of distinct GQL schemas
+	in := `{"inter_query_builtin_value_cache": {"max_num_entries": 10},}`
+	config, _ := cache.ParseCachingConfig([]byte(in))
+	valueCache := cache.NewInterQueryValueCache(context.Background(), config)
+
+	// Use this to map result item position to purpose for better error messages
+	resultItemDescription := []string{"is_valid", "query_ast", "schema_ast"}
+
+	benches := []struct {
+		desc   string
+		schema *ast.Term
+		cache  cache.InterQueryValueCache
+		query  *ast.Term
+		result *ast.Term
+	}{
+		{
+			desc:   "Trivial Schema - string",
+			cache:  nil,
+			query:  ast.NewTerm(ast.String(`{ employeeByID(id: "alice") { salary } }`)),
+			schema: ast.NewTerm(ast.String(employeeGQLSchema)),
+			result: ast.ArrayTerm(
+				ast.BooleanTerm(true),
+				ast.NewTerm(employeeGQLQueryASTObj),
+				ast.NewTerm(employeeGQLSchemaASTObj),
+			),
+		},
+		{
+			desc:   "Trivial Schema with cache - string",
+			cache:  valueCache,
+			query:  ast.NewTerm(ast.String(`{ employeeByID(id: "alice") { salary } }`)),
+			schema: ast.NewTerm(ast.String(employeeGQLSchema)),
+			result: ast.ArrayTerm(
+				ast.BooleanTerm(true),
+				ast.NewTerm(employeeGQLQueryASTObj),
+				ast.NewTerm(employeeGQLSchemaASTObj),
+			),
+		},
+		// TODO add objects and complex schema
+	}
+	for _, bench := range benches {
+		b.Run(bench.desc, func(b *testing.B) {
+			for range b.N {
+				var result *ast.Term
+				b.StartTimer()
+				err := builtinGraphQLParseAndVerify(
+					BuiltinContext{
+						InterQueryBuiltinValueCache: bench.cache,
+					},
+					[]*ast.Term{bench.query, bench.schema},
+					func(term *ast.Term) error {
+						result = term
+						return nil
+					},
+				)
+				b.StopTimer()
+				if err != nil {
+					b.Fatalf("unexpected error: %s", err)
+				}
+				if !bench.result.Equal(result) {
+					b.Errorf("Unexpected result, expected %#v, got %#v", bench.result, result)
+					return
+				}
+				// Check each item in array result
+				for i := range bench.result.Value.(*ast.Array).Len() {
+					expected := bench.result.Value.(*ast.Array).Elem(i)
+					actual := result.Value.(*ast.Array).Elem(i)
+					if !expected.Equal(actual) {
+						b.Errorf("Unexpected value at result[%d] (%s), expected %#v, got %#v", i, resultItemDescription[i], expected, actual)
+						return
+					}
+				}
+			}
+		})
+	}
+}
