@@ -1,21 +1,22 @@
-package validator
+package rules
 
 import (
 	"github.com/open-policy-agent/opa/internal/gqlparser/ast"
 
-	//nolint:revive // Validator rules each use dot imports for convenience.
+	//nolint:staticcheck // Validator rules each use dot imports for convenience.
 	. "github.com/open-policy-agent/opa/internal/gqlparser/validator"
 )
 
-func init() {
-	AddRule("KnownDirectives", func(observers *Events, addError AddErrFunc) {
+var KnownDirectivesRule = Rule{
+	Name: "KnownDirectives",
+	RuleFunc: func(observers *Events, addError AddErrFunc) {
 		type mayNotBeUsedDirective struct {
 			Name   string
 			Line   int
 			Column int
 		}
-		var seen = map[mayNotBeUsedDirective]bool{}
-		observers.OnDirective(func(_ *Walker, directive *ast.Directive) {
+		seen := map[mayNotBeUsedDirective]bool{}
+		observers.OnDirective(func(walker *Walker, directive *ast.Directive) {
 			if directive.Definition == nil {
 				addError(
 					Message(`Unknown directive "@%s".`, directive.Name),
@@ -45,5 +46,9 @@ func init() {
 				seen[tmp] = true
 			}
 		})
-	})
+	},
+}
+
+func init() {
+	AddRule(KnownDirectivesRule.Name, KnownDirectivesRule.RuleFunc)
 }

@@ -2,7 +2,6 @@ package validator
 
 import (
 	"encoding/json"
-	"errors"
 	"fmt"
 	"reflect"
 	"strconv"
@@ -12,7 +11,8 @@ import (
 	"github.com/open-policy-agent/opa/internal/gqlparser/gqlerror"
 )
 
-var ErrUnexpectedType = errors.New("Unexpected Type")
+//nolint:staticcheck // We do not care about capitalized error strings
+var ErrUnexpectedType = fmt.Errorf("Unexpected Type")
 
 // VariableValues coerces and validates variable values
 func VariableValues(schema *ast.Schema, op *ast.OperationDefinition, variables map[string]interface{}) (map[string]interface{}, error) {
@@ -56,19 +56,19 @@ func VariableValues(schema *ast.Schema, op *ast.OperationDefinition, variables m
 
 				jsonNumber, isJSONNumber := val.(json.Number)
 				if isJSONNumber {
-					if v.Type.NamedType == "Int" {
+					switch v.Type.NamedType {
+					case "Int":
 						n, err := jsonNumber.Int64()
 						if err != nil {
 							return nil, gqlerror.ErrorPathf(validator.path, "cannot use value %d as %s", n, v.Type.NamedType)
 						}
 						rv = reflect.ValueOf(n)
-					} else if v.Type.NamedType == "Float" {
+					case "Float":
 						f, err := jsonNumber.Float64()
 						if err != nil {
 							return nil, gqlerror.ErrorPathf(validator.path, "cannot use value %f as %s", f, v.Type.NamedType)
 						}
 						rv = reflect.ValueOf(f)
-
 					}
 				}
 				if rv.Kind() == reflect.Ptr || rv.Kind() == reflect.Interface {
@@ -107,7 +107,7 @@ func (v *varValidator) validateVarType(typ *ast.Type, val reflect.Value) (reflec
 			slc = reflect.Append(slc, val)
 			val = slc
 		}
-		for i := range val.Len() {
+		for i := 0; i < val.Len(); i++ {
 			resetPath()
 			v.path = append(v.path, ast.PathIndex(i))
 			field := val.Index(i)
@@ -182,7 +182,7 @@ func (v *varValidator) validateVarType(typ *ast.Type, val reflect.Value) (reflec
 		return val, gqlerror.ErrorPathf(v.path, "cannot use %s as %s", kind.String(), typ.NamedType)
 	case ast.InputObject:
 		if val.Kind() != reflect.Map {
-			return val, gqlerror.ErrorPathf(v.path, "must be a %s", def.Name)
+			return val, gqlerror.ErrorPathf(v.path, "must be a %s, not a %s", def.Name, val.Kind())
 		}
 
 		// check for unknown fields

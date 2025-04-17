@@ -1,25 +1,25 @@
-package validator
+package rules
 
 import (
 	"github.com/open-policy-agent/opa/internal/gqlparser/ast"
 
-	//nolint:revive // Validator rules each use dot imports for convenience.
+	//nolint:staticcheck // Validator rules each use dot imports for convenience.
 	. "github.com/open-policy-agent/opa/internal/gqlparser/validator"
 )
 
-func init() {
-	AddRule("NoUnusedFragments", func(observers *Events, addError AddErrFunc) {
-
+var NoUnusedFragmentsRule = Rule{
+	Name: "NoUnusedFragments",
+	RuleFunc: func(observers *Events, addError AddErrFunc) {
 		inFragmentDefinition := false
 		fragmentNameUsed := make(map[string]bool)
 
-		observers.OnFragmentSpread(func(_ *Walker, fragmentSpread *ast.FragmentSpread) {
+		observers.OnFragmentSpread(func(walker *Walker, fragmentSpread *ast.FragmentSpread) {
 			if !inFragmentDefinition {
 				fragmentNameUsed[fragmentSpread.Name] = true
 			}
 		})
 
-		observers.OnFragment(func(_ *Walker, fragment *ast.FragmentDefinition) {
+		observers.OnFragment(func(walker *Walker, fragment *ast.FragmentDefinition) {
 			inFragmentDefinition = true
 			if !fragmentNameUsed[fragment.Name] {
 				addError(
@@ -28,5 +28,9 @@ func init() {
 				)
 			}
 		})
-	})
+	},
+}
+
+func init() {
+	AddRule(NoUnusedFragmentsRule.Name, NoUnusedFragmentsRule.RuleFunc)
 }

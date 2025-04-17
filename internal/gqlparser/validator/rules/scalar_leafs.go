@@ -1,14 +1,15 @@
-package validator
+package rules
 
 import (
 	"github.com/open-policy-agent/opa/internal/gqlparser/ast"
 
-	//nolint:revive // Validator rules each use dot imports for convenience.
+	//nolint:staticcheck // Validator rules each use dot imports for convenience.
 	. "github.com/open-policy-agent/opa/internal/gqlparser/validator"
 )
 
-func init() {
-	AddRule("ScalarLeafs", func(observers *Events, addError AddErrFunc) {
+var ScalarLeafsRule = Rule{
+	Name: "ScalarLeafs",
+	RuleFunc: func(observers *Events, addError AddErrFunc) {
 		observers.OnField(func(walker *Walker, field *ast.Field) {
 			if field.Definition == nil {
 				return
@@ -34,5 +35,9 @@ func init() {
 				)
 			}
 		})
-	})
+	},
+}
+
+func init() {
+	AddRule(ScalarLeafsRule.Name, ScalarLeafsRule.RuleFunc)
 }

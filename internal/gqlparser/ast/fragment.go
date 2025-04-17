@@ -9,6 +9,7 @@ type FragmentSpread struct {
 	Definition       *FragmentDefinition
 
 	Position *Position `dump:"-" json:"-"`
+	Comment  *CommentGroup
 }
 
 type InlineFragment struct {
@@ -20,6 +21,7 @@ type InlineFragment struct {
 	ObjectDefinition *Definition
 
 	Position *Position `dump:"-" json:"-"`
+	Comment  *CommentGroup
 }
 
 type FragmentDefinition struct {
@@ -35,4 +37,5 @@ type FragmentDefinition struct {
 	Definition *Definition
 
 	Position *Position `dump:"-" json:"-"`
+	Comment  *CommentGroup
 }

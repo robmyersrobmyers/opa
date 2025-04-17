@@ -1,4 +1,4 @@
-package validator
+package rules
 
 import (
 	"fmt"
@@ -6,12 +6,13 @@ import (
 
 	"github.com/open-policy-agent/opa/internal/gqlparser/ast"
 
-	//nolint:revive // Validator rules each use dot imports for convenience.
+	//nolint:staticcheck // Validator rules each use dot imports for convenience.
 	. "github.com/open-policy-agent/opa/internal/gqlparser/validator"
 )
 
-func init() {
-	AddRule("NoFragmentCycles", func(observers *Events, addError AddErrFunc) {
+var NoFragmentCyclesRule = Rule{
+	Name: "NoFragmentCycles",
+	RuleFunc: func(observers *Events, addError AddErrFunc) {
 		visitedFrags := make(map[string]bool)
 
 		observers.OnFragment(func(walker *Walker, fragment *ast.FragmentDefinition) {
@@ -51,7 +52,7 @@ func init() {
 						}
 						var via string
 						if len(fragmentNames) != 0 {
-							via = " via " + strings.Join(fragmentNames, ", ")
+							via = fmt.Sprintf(" via %s", strings.Join(fragmentNames, ", "))
 						}
 						addError(
 							Message(`Cannot spread fragment "%s" within itself%s.`, spreadName, via),
@@ -67,7 +68,11 @@ func init() {
 
 			recursive(fragment)
 		})
-	})
+	},
+}
+
+func init() {
+	AddRule(NoFragmentCyclesRule.Name, NoFragmentCyclesRule.RuleFunc)
 }
 
 func getFragmentSpreads(node ast.SelectionSet) []*ast.FragmentSpread {

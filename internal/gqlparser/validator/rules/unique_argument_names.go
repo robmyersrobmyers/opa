@@ -1,22 +1,27 @@
-package validator
+package rules
 
 import (
 	"github.com/open-policy-agent/opa/internal/gqlparser/ast"
 
-	//nolint:revive // Validator rules each use dot imports for convenience.
+	//nolint:staticcheck // Validator rules each use dot imports for convenience.
 	. "github.com/open-policy-agent/opa/internal/gqlparser/validator"
 )
 
-func init() {
-	AddRule("UniqueArgumentNames", func(observers *Events, addError AddErrFunc) {
-		observers.OnField(func(_ *Walker, field *ast.Field) {
+var UniqueArgumentNamesRule = Rule{
+	Name: "UniqueArgumentNames",
+	RuleFunc: func(observers *Events, addError AddErrFunc) {
+		observers.OnField(func(walker *Walker, field *ast.Field) {
 			checkUniqueArgs(field.Arguments, addError)
 		})
 
-		observers.OnDirective(func(_ *Walker, directive *ast.Directive) {
+		observers.OnDirective(func(walker *Walker, directive *ast.Directive) {
 			checkUniqueArgs(directive.Arguments, addError)
 		})
-	})
+	},
+}
+
+func init() {
+	AddRule(UniqueArgumentNamesRule.Name, UniqueArgumentNamesRule.RuleFunc)
 }
 
 func checkUniqueArgs(args ast.ArgumentList, addError AddErrFunc) {

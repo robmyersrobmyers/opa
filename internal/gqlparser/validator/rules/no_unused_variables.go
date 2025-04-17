@@ -1,15 +1,16 @@
-package validator
+package rules
 
 import (
 	"github.com/open-policy-agent/opa/internal/gqlparser/ast"
 
-	//nolint:revive // Validator rules each use dot imports for convenience.
+	//nolint:staticcheck // Validator rules each use dot imports for convenience.
 	. "github.com/open-policy-agent/opa/internal/gqlparser/validator"
 )
 
-func init() {
-	AddRule("NoUnusedVariables", func(observers *Events, addError AddErrFunc) {
-		observers.OnOperation(func(_ *Walker, operation *ast.OperationDefinition) {
+var NoUnusedVariablesRule = Rule{
+	Name: "NoUnusedVariables",
+	RuleFunc: func(observers *Events, addError AddErrFunc) {
+		observers.OnOperation(func(walker *Walker, operation *ast.OperationDefinition) {
 			for _, varDef := range operation.VariableDefinitions {
 				if varDef.Used {
 					continue
@@ -28,5 +29,9 @@ func init() {
 				}
 			}
 		})
-	})
+	},
+}
+
+func init() {
+	AddRule(NoUnusedVariablesRule.Name, NoUnusedVariablesRule.RuleFunc)
 }

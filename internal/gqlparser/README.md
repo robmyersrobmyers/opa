@@ -4,8 +4,7 @@
 
 https://github.com/vektah/gqlparser was duplicated into `internal/gqlparser` folder, so that we no longer have to track the external library 1-to-1, and so that OPA library users who want to use newer/older gqlparser versions won't have to match our GraphQL parser's version.
 
-The current version we have forked from is commit [`b3be96f` on branch `master`](https://github.com/vektah/gqlparser/commit/b3be96ff69fa97682c43570dcb6f75d08fdf8586), which is 2 commits past the [`v2.5.1`](https://github.com/vektah/gqlparser/releases/tag/v2.5.1) release tag.
-We picked this specific commit because the two commits after the 2.5.1 release dramatically improve the linter state of the library to be as strict or stricter than OPA's linting, allowing for nearly drop-in integration.
+The current version we have forked from is tag [`v2.5.25`](https://github.com/vektah/gqlparser/releases/tag/v2.5.25), which contains the JSON marshal fixes.
 
 We currently modify `gqlparser/gqlerror/error.go` to provide the line and column of the error location, so as to keep our `graphql` builtin error messages consistent.
 This requires either modifying all the library tests, or removing them.
@@ -18,18 +17,13 @@ It also will add some linter ignore annotations on the validator rules, since th
 
 The script thus should alleviate around 40-60% of the linter-fixup work required during a version bump.
 
-## JSON Position Marshal script
-
-The `remove-position-marshal.sh` script can be executed from this directory.
-This script annotates gqlparser structs to exclude the Position field during JSON marshaling.
-The Position field contains a copy of the original schema for each element, potentially causing unexpectedly large memory allocations.
-OPA subsequently prunes the Position from the AST, so it makes sense not to generate it in the first place.
-
 ## Original README
+gqlparser [![CircleCI](https://badgen.net/circleci/github/vektah/gqlparser/master)](https://circleci.com/gh/vektah/gqlparser) [![Go Report Card](https://goreportcard.com/badge/github.com/vektah/gqlparser/v2)](https://goreportcard.com/report/github.com/vektah/gqlparser/v2) [![Coverage Status](https://badgen.net/coveralls/c/github/vektah/gqlparser)](https://coveralls.io/github/vektah/gqlparser?branch=master)
+===
 
 This is a parser for graphql, written to mirror the graphql-js reference implementation as closely while remaining idiomatic and easy to use.
 
-spec target: June 2018 (Schema definition language, block strings as descriptions, error paths & extension)
+spec target: [October 2021](https://spec.graphql.org/October2021/) and [select portions of the Draft](https://spec.graphql.org/draft/), based on the graphql-js reference implementation [graphql-js v16.10.0](https://github.com/graphql/graphql-js/releases/tag/v16.10.0). This includes Schema definition language, block strings as descriptions, error paths & extension, etc. If there is a spec update or [new release](https://github.com/graphql/graphql-spec/releases), please follow [this process to update](./validator/imported/readme.md) and submit a PR.
 
 This parser is used by [gqlgen](https://github.com/99designs/gqlgen), and it should be reasonably stable.
 
